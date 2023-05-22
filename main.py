@@ -62,6 +62,8 @@ class MyApp(QMainWindow):
         # Create action
         self.set_api_key_action = QAction("Set API token", self)
         self.options_menu.addAction(self.set_api_key_action)
+        self.about_action = QAction("About", self)
+        self.options_menu.addAction(self.about_action)
 
         # Connect signals and slots
         self.get_ip_button.clicked.connect(self.get_current_ip)
@@ -69,6 +71,7 @@ class MyApp(QMainWindow):
         self.update_list_button.clicked.connect(self.update_domain_list)
         self.select_all_button.clicked.connect(self.select_all_domains)
         self.set_api_key_action.triggered.connect(self.set_api_key)
+        self.about_action.triggered.connect(self.show_about_dialog)
 
 
     def get_current_ip(self):
@@ -76,6 +79,13 @@ class MyApp(QMainWindow):
         if response.status_code == 200:
             self.current_ip = response.json()['origin']
             self.ip_label.setText(self.current_ip)
+
+    def update_domain_in_list(self, domain, ip):
+        for i in range(self.domain_list.count()):
+            item = self.domain_list.item(i)
+            checkbox = self.domain_list.itemWidget(item)
+            if checkbox.text().split(' ')[0] == domain:
+                checkbox.setText(f"{domain} ({ip})")
 
     def update_all_domains(self):
         selected_domains = []
@@ -86,6 +96,7 @@ class MyApp(QMainWindow):
                 selected_domains.append(checkbox.text().split(' ')[0])
         self.update_domains_thread = UpdateDomainsThread(self.api_key, self.current_ip, selected_domains)
         self.update_domains_thread.progress_signal.connect(self.progress_bar.setValue)
+        self.update_domains_thread.update_signal.connect(self.update_domain_in_list)
         self.update_domains_thread.start()
 
     def update_domain_list(self):
@@ -128,6 +139,34 @@ class MyApp(QMainWindow):
 
             self.api_key = self.api_key.strip()
             self.update_list_button.setEnabled(True)
+
+    def show_about_dialog(self):
+        about_dialog = QtWidgets.QDialog(self)
+        about_dialog.setWindowTitle("About")
+
+        layout = QtWidgets.QVBoxLayout()
+
+        copyright_label = QLabel()
+        copyright_label.setText("Copyright 2023 Dave Davis")
+        layout.addWidget(copyright_label)
+
+        website_label = QLabel()
+        website_label.setText('<a href="https://www.davedavis.io">https://www.davedavis.io</a>')
+        website_label.setTextFormat(QtCore.Qt.RichText)
+        website_label.setTextInteractionFlags(QtCore.Qt.TextBrowserInteraction)
+        website_label.setOpenExternalLinks(True)
+        layout.addWidget(website_label)
+
+        license_label = QLabel()
+        license_label.setText(
+            "This work is licensed under a Creative Commons Attribution 4.0 International License.\n "
+            "You are free to do what you like with this software as long as attribution is provided.")
+        layout.addWidget(license_label)
+
+        about_dialog.setLayout(layout)
+
+        about_dialog.exec_()
+
 
 if __name__ == "__main__":
     app = QtWidgets.QApplication(sys.argv)
