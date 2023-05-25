@@ -1,10 +1,15 @@
 from PyQt5 import QtWidgets, QtCore
-from PyQt5.QtWidgets import QMainWindow, QLabel, QPushButton, QLineEdit, QProgressBar, QMenuBar, QMenu, QAction, QInputDialog, QListWidget, QListWidgetItem, QCheckBox
+from PyQt5.QtGui import QIcon
+from PyQt5.QtWidgets import (QMainWindow, QLabel, QPushButton, QLineEdit,
+                             QProgressBar, QMenuBar, QMenu, QAction,
+                             QInputDialog, QListWidget, QListWidgetItem,
+                             QCheckBox, QStatusBar)
 from CloudFlare import CloudFlare
 import requests
 import sys
 import keyring
 
+from get_current_ip_thread import GetCurrentIpThread
 from update_domains_list_thread import UpdateDomainListThread
 from update_domains_thread import UpdateDomainsThread
 
@@ -12,35 +17,42 @@ from update_domains_thread import UpdateDomainsThread
 class MyApp(QMainWindow):
     def __init__(self):
         super().__init__()
-
+        self.setWindowIcon(QIcon('dd-cf.png'))
         self.current_ip = None
 
-
+        self.get_current_ip_thread = GetCurrentIpThread()
+        self.get_current_ip_thread.ip_signal.connect(self.ip_received)
 
         self.setWindowTitle("Cloudflare IP Updater")
-        self.setGeometry(200, 200, 500, 640)  # Adjust the size to fit the new elements
+        self.setGeometry(200, 200, 500, 640)
 
+        # Create status bar
+        self.status_bar = QStatusBar(self)
+        self.setStatusBar(self.status_bar)
 
         # Create buttons
         self.get_ip_button = QPushButton("Get Current IP", self)
         self.get_ip_button.move(20, 30)
         self.get_ip_button.resize(200, 30)
+        self.get_ip_button.setToolTip('Gets your current IP address')
 
         self.update_list_button = QPushButton("Get domain/zone list", self)
         self.update_list_button.move(20, 80)
         self.update_list_button.resize(200, 30)
         self.update_list_button.setEnabled(False)
+        self.update_list_button.setToolTip('Fetches the list of domains/zones from Cloudflare')
 
         self.update_domains_button = QPushButton("Update Selected Domains", self)
         self.update_domains_button.move(20, 130)
-        self.update_domains_button.resize(200, 30)  # Make the button wider
+        self.update_domains_button.resize(200, 30)
         self.update_domains_button.setEnabled(False)
-
+        self.update_domains_button.setToolTip('Updates the IP address for the selected domains/zones')
 
         self.select_all_button = QPushButton("Select All Domains", self)
         self.select_all_button.move(20, 180)
-        self.select_all_button.resize(200, 30)  # Make the button wider
+        self.select_all_button.resize(200, 30)
         self.select_all_button.setEnabled(False)
+        self.select_all_button.setToolTip('Selects all domains/zones in the list')
 
         # Create label
         self.ip_label = QLabel(self)
@@ -81,12 +93,23 @@ class MyApp(QMainWindow):
         if self.api_key is not None:
             self.update_list_button.setEnabled(True)
 
+    def on_domain_list_update_finished(self):
+        self.status_bar.showMessage('All zones fetched successfully.')
+
+    def on_domains_update_finished(self):
+        self.status_bar.showMessage('Selected zones updated with new IP.')
 
     def get_current_ip(self):
-        response = requests.get('https://httpbin.org/ip')
-        if response.status_code == 200:
-            self.current_ip = response.json()['origin']
+        self.status_bar.showMessage('Fetching current IP...')
+        self.get_current_ip_thread.start()
+
+    def ip_received(self, message):
+        if message.startswith('HTTP error occurred:') or message.startswith('An error occurred:'):
+            self.status_bar.showMessage(message)
+        else:
+            self.current_ip = message
             self.ip_label.setText(self.current_ip)
+            self.status_bar.showMessage('Current IP fetched successfully.')
 
     def update_domain_in_list(self, domain, ip):
         for i in range(self.domain_list.count()):
@@ -96,6 +119,7 @@ class MyApp(QMainWindow):
                 checkbox.setText(f"{domain} ({ip})")
 
     def update_all_domains(self):
+        self.status_bar.showMessage('Updating selected domains...')
         selected_domains = []
         for i in range(self.domain_list.count()):
             item = self.domain_list.item(i)
@@ -105,14 +129,16 @@ class MyApp(QMainWindow):
         self.update_domains_thread = UpdateDomainsThread(self.api_key, self.current_ip, selected_domains)
         self.update_domains_thread.progress_signal.connect(self.progress_bar.setValue)
         self.update_domains_thread.update_signal.connect(self.update_domain_in_list)
+        self.update_domains_thread.finished.connect(self.on_domains_update_finished)
         self.update_domains_thread.start()
 
     def update_domain_list(self):
-        self.domain_list.clear()  # Clear the list at the beginning of the operation
+        self.status_bar.showMessage('Fetching domain list...')
+        self.domain_list.clear()
         self.update_domain_list_thread = UpdateDomainListThread(self.api_key)
         self.update_domain_list_thread.progress_signal.connect(self.progress_bar.setValue)
         self.update_domain_list_thread.data_signal.connect(self.add_to_domain_list)
-        self.update_domain_list_thread.finished.connect(self.on_update_finished)  # Connect the finish signal to a new slot
+        self.update_domain_list_thread.finished.connect(self.on_domain_list_update_finished)
         self.update_domain_list_thread.start()
 
     def add_to_domain_list(self, dns_record):
@@ -121,6 +147,12 @@ class MyApp(QMainWindow):
         list_item.setSizeHint(checkbox.sizeHint())
         self.domain_list.addItem(list_item)
         self.domain_list.setItemWidget(list_item, checkbox)
+
+    def on_domain_list_update_finished(self):
+        self.status_bar.showMessage('All zones fetched successfully.')
+        if self.current_ip is not None:
+            self.update_domains_button.setEnabled(True)
+            self.select_all_button.setEnabled(True)
 
     def on_update_finished(self):
         if self.current_ip is not None:
@@ -131,6 +163,10 @@ class MyApp(QMainWindow):
             # Enable the buttons when the update is finished
             self.update_domains_button.setEnabled(True)
             self.select_all_button.setEnabled(True)
+
+
+
+
 
 
     def select_all_domains(self):
