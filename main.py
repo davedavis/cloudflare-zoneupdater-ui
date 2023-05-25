@@ -3,6 +3,7 @@ from PyQt5.QtWidgets import QMainWindow, QLabel, QPushButton, QLineEdit, QProgre
 from CloudFlare import CloudFlare
 import requests
 import sys
+import keyring
 
 from update_domains_list_thread import UpdateDomainListThread
 from update_domains_thread import UpdateDomainsThread
@@ -13,6 +14,8 @@ class MyApp(QMainWindow):
         super().__init__()
 
         self.current_ip = None
+
+
 
         self.setWindowTitle("Cloudflare IP Updater")
         self.setGeometry(200, 200, 500, 640)  # Adjust the size to fit the new elements
@@ -72,6 +75,11 @@ class MyApp(QMainWindow):
         self.select_all_button.clicked.connect(self.select_all_domains)
         self.set_api_key_action.triggered.connect(self.set_api_key)
         self.about_action.triggered.connect(self.show_about_dialog)
+
+        # Try to retrieve the API key from the keyring
+        self.api_key = keyring.get_password("Cloudflare", "API Key")
+        if self.api_key is not None:
+            self.update_list_button.setEnabled(True)
 
 
     def get_current_ip(self):
@@ -134,10 +142,9 @@ class MyApp(QMainWindow):
     def set_api_key(self):
         self.api_key, ok = QInputDialog.getText(self, "Set API Key", "Enter your Cloudflare API Key:")
         if ok:
-            # Save the API key for later use
-            # You might want to securely store this key instead of just saving it in memory
-
             self.api_key = self.api_key.strip()
+            # Save the API key for later use using keyring
+            keyring.set_password("Cloudflare", "API Key", self.api_key)
             self.update_list_button.setEnabled(True)
 
     def show_about_dialog(self):
