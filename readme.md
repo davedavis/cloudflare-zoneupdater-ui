@@ -8,7 +8,7 @@ way. This is my first try at a desktop Graphical User Interface so buyer
 beware and all that. 
 
 # Usage
-To use, run main.py. Make sure you click "options" then "set API token".
+To use, run zoneupdater.py. Make sure you click "options" then "set API token".
 Once set, you can get your zones and update them.
 
 # Notes
@@ -20,9 +20,9 @@ submit a PR if you prefer. I'm sure there's tonnes of bugs.
 
 
 # ToDo:
-- [ ] Add support for adding API key/token to keyring, env or config file.
+- [x] Add support for adding API key/token to keyring, env or config file.
 - [x] Auto refresh domains list after update.
 - [x] Add about section and licence.
-- [ ] Make executable.
+- [x] Make executable.
 - [ ] Add support for enabling a service or auto updating on WAN change.
 - [ ] Add tests.
