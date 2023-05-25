@@ -7,6 +7,8 @@ something I whipped together to update them all quickly in a user-friendly
 way. This is my first try at a desktop Graphical User Interface so buyer 
 beware and all that. 
 
+![demo.png](demo.png)
+
 # Usage
 To use, run zoneupdater.py. Make sure you click "options" then "set API token".
 Once set, you can get your zones and update them.
