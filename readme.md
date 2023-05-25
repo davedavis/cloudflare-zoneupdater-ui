@@ -11,7 +11,9 @@ beware and all that.
 
 # Usage
 To use, run zoneupdater.py. Make sure you click "options" then "set API token".
-Once set, you can get your zones and update them.
+Once set, you can get your zones and update them. Please note that this uses
+cloudflare API tokens, not API keys. You can get your API token from the profile
+section in your cloudflare account.
 
 # Notes
 This is basically a scratch project. I wrote it in an evening, and it has
